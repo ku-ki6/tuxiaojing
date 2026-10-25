@@ -1,0 +1,12 @@
+{
+  "appId": "com.tuxiaojing.app",
+  "appName": "图小净",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "loggingEnabled": false,
+  "ios": {
+    "contentInset": "always",
+    "scheme": "TuxiaoJing"
+  },
+  "plugins": {}
+}

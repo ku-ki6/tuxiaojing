@@ -1,0 +1,14 @@
+{
+  "name": "tuxiaojing-ios",
+  "version": "1.0.0",
+  "private": true,
+  "description": "图小净 - iPhone 相册整理（真正读取并删除系统相册）",
+  "dependencies": {
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2",
+    "capacitor-photos": "file:./plugin"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}

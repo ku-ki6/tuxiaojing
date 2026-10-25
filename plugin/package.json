@@ -1,0 +1,12 @@
+{
+  "name": "capacitor-photos",
+  "version": "0.0.1",
+  "description": "PhotoKit bridge: 读取全部照片 / 真删照片",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/tuxiaojing/tuxiaojing.git" },
+  "author": "tuxiaojing",
+  "capacitor": {
+    "ios": { "src": "ios" },
+    "android": { "src": "android" }
+  }
+}
