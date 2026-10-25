@@ -45,22 +45,15 @@ jobs:
           xcodebuild -version || true
           xcodebuild -workspace App.xcworkspace -scheme App -showdestinations || true
 
-      - name: 编译（不做签名，交给 AltStore 签）
+      - name: 编译（先试 archive，失败自动改用 build 兜底）
         run: |
+          set -o pipefail
           cd ios/App
-          xcodebuild -workspace App.xcworkspace \
-            -scheme App \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -archivePath build/App.xcarchive \
-            archive \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            ENABLE_USER_SCRIPT_SANDBOXING=NO \
-            ONLY_ACTIVE_ARCH=YES \
-            ARCHS=arm64 \
-            IPHONEOS_DEPLOYMENT_TARGET=13.0 2>&1 | tee /tmp/build.log
+          FLAGS='CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO ENABLE_USER_SCRIPT_SANDBOXING=NO ONLY_ACTIVE_ARCH=YES ARCHS=arm64 IPHONEOS_DEPLOYMENT_TARGET=13.0'
+          if ! eval "xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath build/App.xcarchive archive $FLAGS" 2>&1 | tee /tmp/build.log; then
+            echo "=== archive 方式失败，改用 build 方式重试（产物同样可以打包成 IPA）==="
+            eval "xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -derivedDataPath build/DD build $FLAGS" 2>&1 | tee -a /tmp/build.log
+          fi
 
       - name: 上传编译日志（排错用）
         if: always()
@@ -72,10 +65,18 @@ jobs:
 
       - name: 打包成 IPA
         run: |
-          cd ios/App/build/App.xcarchive/Products/Applications
-          mkdir -p Payload
-          cp -r App.app Payload/
-          zip -qr "$GITHUB_WORKSPACE/图小净.ipa" Payload
+          set -e
+          cd ios/App
+          APP_PATH=$(find build -maxdepth 6 -name "App.app" -type d 2>/dev/null | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::没有找到 App.app，下面是编译日志最后 150 行，真正原因就在这里："
+            tail -150 /tmp/build.log
+            exit 1
+          fi
+          echo "找到产物：$APP_PATH"
+          rm -rf /tmp/Payload && mkdir -p /tmp/Payload
+          cp -r "$APP_PATH" /tmp/Payload/
+          cd /tmp && zip -qr "$GITHUB_WORKSPACE/图小净.ipa" Payload
           ls -lh "$GITHUB_WORKSPACE/图小净.ipa"
 
       - name: 上传 IPA（在 Actions 页面下载）
