@@ -39,19 +39,24 @@ jobs:
           cd ios/App
           pod install --repo-update
 
+      - name: 查看可用目标（排错用）
+        run: |
+          cd ios/App
+          xcodebuild -version || true
+          xcodebuild -workspace App.xcworkspace -scheme App -showdestinations || true
+
       - name: 编译（不做签名，交给 AltStore 签）
         run: |
           cd ios/App
           xcodebuild -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
-            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -archivePath build/App.xcarchive \
             archive \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            -allowProvisioningUpdates
+            CODE_SIGNING_ALLOWED=NO
 
       - name: 打包成 IPA
         run: |
