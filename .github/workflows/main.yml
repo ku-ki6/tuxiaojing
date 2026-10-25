@@ -63,6 +63,15 @@ jobs:
           path: /tmp/build.log
           retention-days: 7
 
+      - name: 打印编译错误（失败时用，方便看原因）
+        if: failure()
+        run: |
+          echo "===== 编译日志中的错误行 ====="
+          grep -nE "error:|Error |FAILED|clang:|ld:|PhaseScriptExecution|Command failed|CodeSign" /tmp/build.log | tail -60
+          echo ""
+          echo "===== 日志最后 40 行 ====="
+          tail -40 /tmp/build.log
+
       - name: 打包成 IPA
         run: |
           set -e
