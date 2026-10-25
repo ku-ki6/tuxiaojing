@@ -1,0 +1,69 @@
+name: 编译 图小净 iOS IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 准备 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安装依赖
+        run: npm install --no-audit --no-fund
+
+      - name: 生成 iOS 工程
+        run: npx cap add ios
+
+      - name: 同步网页资源与插件
+        run: npx cap sync ios
+
+      - name: 写入相册权限说明（必须，否则一调用就崩溃）
+        run: |
+          PLIST=ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 图小净需要访问你的相册，用于识别重复、模糊与截图照片" "$PLIST" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 图小净需要访问你的相册，用于识别重复、模糊与截图照片" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryAddUsageDescription 图小净需要写入相册以删除你标记的照片" "$PLIST" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 图小净需要写入相册以删除你标记的照片" "$PLIST"
+
+      - name: 安装 CocoaPods 依赖
+        run: |
+          cd ios/App
+          pod install --repo-update
+
+      - name: 编译（不做签名，交给 AltStore 签）
+        run: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/App.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            -allowProvisioningUpdates
+
+      - name: 打包成 IPA
+        run: |
+          cd ios/App/build/App.xcarchive/Products/Applications
+          mkdir -p Payload
+          cp -r App.app Payload/
+          zip -qr "$GITHUB_WORKSPACE/图小净.ipa" Payload
+          ls -lh "$GITHUB_WORKSPACE/图小净.ipa"
+
+      - name: 上传 IPA（在 Actions 页面下载）
+        uses: actions/upload-artifact@v4
+        with:
+          name: 图小净-IPA
+          path: 图小净.ipa
+          retention-days: 30
