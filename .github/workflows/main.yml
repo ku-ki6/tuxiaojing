@@ -23,6 +23,28 @@ jobs:
       - name: 生成 iOS 工程
         run: npx cap add ios
 
+      - name: 修正部署目标为 iOS 14（插件用到 iOS 14 相册接口，低于 14 会编译失败）
+        run: |
+          cd ios/App
+          python3 - <<'PY'
+          import re
+          p = 'Podfile'
+          s = open(p, encoding='utf-8').read()
+          s = re.sub(r"platform :ios, '[^']*'", "platform :ios, '14.0'", s)
+          if 'post_install' not in s:
+              s += """
+post_install do |installer|
+  installer.pods_project.targets.each do |t|
+    t.build_configurations.each do |c|
+      c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+    end
+  end
+end
+"""
+          open(p, 'w', encoding='utf-8').write(s)
+          print("Podfile 已修正，平台：ios 14.0")
+          PY
+
       - name: 同步网页资源与插件
         run: npx cap sync ios
 
@@ -49,7 +71,7 @@ jobs:
         run: |
           set -o pipefail
           cd ios/App
-          FLAGS='CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO ENABLE_USER_SCRIPT_SANDBOXING=NO ONLY_ACTIVE_ARCH=YES ARCHS=arm64 IPHONEOS_DEPLOYMENT_TARGET=13.0'
+          FLAGS='CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO ENABLE_USER_SCRIPT_SANDBOXING=NO ONLY_ACTIVE_ARCH=YES ARCHS=arm64 IPHONEOS_DEPLOYMENT_TARGET=14.0'
           if ! eval "xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath build/App.xcarchive archive $FLAGS" 2>&1 | tee /tmp/build.log; then
             echo "=== archive 方式失败，改用 build 方式重试（产物同样可以打包成 IPA）==="
             eval "xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -derivedDataPath build/DD build $FLAGS" 2>&1 | tee -a /tmp/build.log
