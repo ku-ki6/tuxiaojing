@@ -26,24 +26,12 @@ jobs:
       - name: 修正部署目标为 iOS 14（插件用到 iOS 14 相册接口，低于 14 会编译失败）
         run: |
           cd ios/App
-          python3 - <<'PY'
-          import re
-          p = 'Podfile'
-          s = open(p, encoding='utf-8').read()
-          s = re.sub(r"platform :ios, '[^']*'", "platform :ios, '14.0'", s)
-          if 'post_install' not in s:
-              s += """
-post_install do |installer|
-  installer.pods_project.targets.each do |t|
-    t.build_configurations.each do |c|
-      c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
-    end
-  end
-end
-"""
-          open(p, 'w', encoding='utf-8').write(s)
-          print("Podfile 已修正，平台：ios 14.0")
-          PY
+          perl -pi -e "s/platform :ios, '[^']*'/platform :ios, '14.0'/" Podfile
+          grep -q "post_install" Podfile || printf '%s\n' '' 'post_install do |installer|' '  installer.pods_project.targets.each do |t|' '    t.build_configurations.each do |c|' '      c.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "14.0"' '    end' '  end' 'end' >> Podfile
+          echo "===== Podfile 头部 ====="
+          head -5 Podfile
+          echo "===== Podfile 尾部 ====="
+          tail -10 Podfile
 
       - name: 同步网页资源与插件
         run: npx cap sync ios
